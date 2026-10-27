@@ -283,54 +283,32 @@ Viết exception handler trả mọi lỗi về dạng:
 
 ---
 
-## ❓ Câu hỏi củng cố
+## ❓ Câu hỏi
 
-### Phần 1: Trắc nghiệm lý thuyết
+**Câu 1.** `response_model` dùng để kiểm chứng (validate) và định dạng dữ liệu đầu ra theo model `BookOut`, đồng thời sinh schema hiển thị trên Swagger UI. Nó đảm bảo API không trả về các trường dư thừa hoặc sai kiểu.
 
-**Câu 1.** Trong FastAPI, khi khai báo `response_model=list[BookOut]` cho endpoint `GET /books`, tác dụng chính của nó là gì?
-- A. Tự động thêm dữ liệu vào cơ sở dữ liệu.
-- B. Kiểm chứng và định dạng dữ liệu đầu ra theo model `BookOut`, đồng thời hiển thị schema trên Swagger UI.
-- C. Chặn các request không hợp lệ gửi đến server.
-- D. Tăng tốc độ phản hồi của API.
+**Câu 2.** 
+- `PUT` là **thay thế toàn bộ** tài nguyên → client phải gửi đầy đủ tất cả các trường.
+- `PATCH` là **cập nhật một phần** → client chỉ gửi các trường muốn thay đổi.
+- `PATCH` cần `exclude_unset=True` để chỉ lấy những trường thực sự được client gửi lên (không lấy các trường có giá trị mặc định `None`), tránh ghi đè dữ liệu cũ bằng `None`.
 
-**Câu 2.** Sự khác biệt cốt lõi giữa phương thức `PUT` và `PATCH` trong bài thực hành này là gì?
-- A. `PUT` dùng để thêm mới, `PATCH` dùng để xóa.
-- B. `PUT` yêu cầu gửi đầy đủ tất cả các trường để thay thế toàn bộ tài nguyên, `PATCH` chỉ cần gửi các trường muốn thay đổi (cập nhật một phần).
-- C. `PUT` trả về 201, `PATCH` trả về 200.
-- D. `PATCH` không thể cập nhật trường `quantity`.
+**Câu 3.** FastAPI trả về mã **422 Unprocessable Entity**. Không dùng 400 vì 400 thường ám chỉ lỗi cú pháp HTTP (malformed request), còn 422 chỉ ra rằng request đúng cú pháp nhưng dữ liệu không thỏa mãn ràng buộc ngữ nghĩa (validation error). FastAPI mặc định dùng 422 theo chuẩn của nó.
 
-**Câu 3.** Đoạn code `current.update(book.model_dump(exclude_unset=True))` trong endpoint `PATCH` có tác dụng gì?
-- A. Xóa tất cả các trường không được gửi lên.
-- B. Chỉ cập nhật những trường mà client thực sự gửi lên, giữ nguyên các trường không gửi.
-- C. Cập nhật tất cả các trường với giá trị `None`.
-- D. Kiểm tra xem dữ liệu có bị trùng ISBN hay không.
+**Câu 4.** Theo chuẩn HTTP, **204 No Content** nghĩa là xử lý thành công nhưng không có nội dung trả về — phù hợp với hành động xóa (client không cần dữ liệu gì sau khi xóa). Nếu cố tình trả về body trong response 204, nhiều client/proxy sẽ gặp lỗi hoặc bỏ qua body vì đây là vi phạm đặc tả HTTP (RFC 7231).
 
-**Câu 4.** Khi xảy ra lỗi vi phạm ràng buộc dữ liệu của Pydantic (ví dụ: `year=1800`, `isbn="123"`), FastAPI sẽ tự động trả về mã trạng thái HTTP nào?
-- A. 400 Bad Request
-- B. 404 Not Found
-- C. 422 Unprocessable Entity
-- D. 500 Internal Server Error
+**Câu 5.** `exclude_id` giúp **bỏ qua việc kiểm tra trùng ISBN với chính cuốn sách đang cập nhật**. Nếu bỏ `exclude_id` khi gọi trong `PUT`, khi client cập nhật sách mà vẫn giữ nguyên ISBN cũ, hệ thống sẽ thấy ISBN đó "đã tồn tại" (chính là của cuốn sách đang sửa) và trả về lỗi **409 Conflict** sai.
 
-**Câu 5.** Tại sao endpoint `DELETE /books/{id}` lại trả về mã `204 No Content` thay vì `200 OK`?
-- A. Vì không tìm thấy sách để xóa.
-- B. Vì theo chuẩn HTTP, xóa thành công thì không cần trả về dữ liệu (body) trong response.
-- C. Vì server gặp lỗi khi xóa.
-- D. Vì FastAPI không hỗ trợ trả về 200 cho DELETE.
+**Câu 6.** Vì dữ liệu lưu trong **bộ nhớ (list Python)**, sẽ mất khi tắt server. Nếu không khởi động lại:
+- Lần chạy Runner thứ 2, TC06 (thêm sách) sẽ bị lỗi **409** vì ISBN đã tồn tại từ lần chạy trước.
+- TC07 (test trùng ISBN) sẽ không còn ý nghĩa kiểm thử đúng kịch bản (vì dữ liệu đã bị "bẩn").
 
----
+**Câu 7.** `BookId` là một kiểu dữ liệu có ràng buộc: `book_id` phải là số nguyên **lớn hơn 0** (`gt=0`). Nếu client gọi `GET /books/-5`, FastAPI sẽ trả về **422 Unprocessable Entity** do vi phạm ràng buộc `gt=0`, kèm mô tả lỗi chỉ ra tham số `book_id` không hợp lệ.
 
-### Phần 2: Phân tích tình huống (Tự luận ngắn)
-
-**Câu 6.** Giải thích tại sao trong Postman, trước mỗi lần chạy Collection Runner (để test TC01–TC12), ta nên khởi động lại server?
-> *Gợi ý:* Liên quan đến việc lưu trữ dữ liệu trong bộ nhớ (in-memory) và test case TC07 (kiểm tra trùng ISBN).
-
-**Câu 7.** Trong bài thực hành, hàm `check_isbn(isbn: str, exclude_id: int | None = None)` được dùng cho cả `POST` và `PUT`. Tham số `exclude_id` có ý nghĩa gì trong ngữ cảnh của phương thức `PUT`?
-> *Gợi ý:* Điều gì sẽ xảy ra nếu khi cập nhật sách id=1, ta gửi lại đúng ISBN hiện tại của nó mà không có `exclude_id`?
-
-**Câu 8.** Quan sát đoạn code sau trong `app/routers/books.py`:
-```python
-BookId = Annotated[int, Path(gt=0, description="Mã sách")]
-```
+**Câu 8.** 
+- `BookCreate`: dùng cho `POST` (thêm mới) và `PUT` (thay thế) — yêu cầu đầy đủ các trường bắt buộc.
+- `BookUpdate`: dùng cho `PATCH` — mọi trường đều **tùy chọn** (`Optional`) để cho phép cập nhật một phần.
+- `BookOut`: dùng cho output — có thêm trường `id` do hệ thống sinh ra.
+- **Phải tách 3 model** vì mỗi thao tác có yêu cầu dữ liệu khác nhau. Dùng chung 1 model sẽ khiến client phải gửi thừa trường khi `PATCH`, hoặc không thể validate đúng khi `POST`/`PUT`. Tách ra giúp code rõ ràng, đúng nghiệp vụ và schema Swagger chính xác hơn.
 ## 📚 Tài liệu tham khảo
 
 - [FastAPI Documentation](https://fastapi.tiangolo.com/)
